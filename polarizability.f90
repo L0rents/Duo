@@ -1049,7 +1049,7 @@ module polarizability
                         energyI - intensity%ZPE, nu_if, &
                         linestr2, A_einst, absorption_int, &
                         istateF, ivF, ilambdaF, sigmaF, omegaF, dir, &
-                        istateI, ivI, ilambdaI, & sigmaI, omegaI
+                        istateI, ivI, ilambdaI, sigmaI, omegaI
                         !
                       !
                       ! generate the line list (transition file)

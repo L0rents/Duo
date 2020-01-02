@@ -1,0 +1,6 @@
+in diatom.f90, around line 1500, write the section to read in the rotational-nonadiabatic
+and vibrational non-adiabatic position-dependent masses
+
+then, the kinentic energy is in the duo_j0 routine, in diatom.f90
+
+put warning --- it should be used only 1) for the same state 2) for 1Sigma states 
