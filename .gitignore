@@ -41,3 +41,15 @@ $RECYCLE.BIN/
 Network Trash Folder
 Temporary Items
 .apdisk
+
+# Compiler-generate objects and module info
+*.o
+*.mod
+
+# Eclipse config directories
+.cproject
+.project
+.settings
+
+#duo executable
+duo.x
