@@ -73,11 +73,14 @@ module diatom_module
   integer(kind=ik), parameter       :: max_iter_min_search=20  ! maximum number of iterations for finding minimum of PEC
   real(kind=rk), parameter :: h=2e-3_rk ! `h' is the step size in ang. for computing numerical derivatives of pecs
   real(kind=rk) :: x0, x1 ! generic tmp variables
-
   ! Lorenzo Lodi -- text variables containing the symbols of the two atoms. The following formats are supported:
   !              1) Chemical symbol. E.g.  C, O, Na, Sc, Fe ....
   !              2) Chemical symbol - atomic number, e.g.: C-14, O-16, Na-23
   character(len=15) :: symbol1="Undefined", symbol2="Undefined"
+  !
+  ! variables used for the rotational and vibrational position-dependent mass functions
+  character(len=50) :: field_name
+  real(kind=rk) :: conversion_factor=1._rk
   !
   !
   type symmetryT
@@ -1413,7 +1416,9 @@ module diatom_module
           !
        case("SPIN-ORBIT","SPIN-ORBIT-X","POTEN","POTENTIAL","L2","L**2","LXLY","LYLX","ABINITIO",&
             "LPLUS","L+","L_+","LX","DIPOLE","TM","DIPOLE-MOMENT","DIPOLE-X",&
-            "SPIN-SPIN","SPIN-SPIN-O","BOBROT","BOB-ROT","SPIN-ROT","DIABATIC","DIABAT",&
+            "SPIN-SPIN","SPIN-SPIN-O", &
+            "BOBROT", "BOB-ROT","ROTATIONAL-NONADIABATIC-G-FACTOR", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION", &
+            "SPIN-ROT","DIABATIC","DIABAT",&
             "LAMBDA-OPQ","LAMBDA-P2Q","LAMBDA-Q","LAMBDAOPQ","LAMBDAP2Q","LAMBDAQ",&
             "QUADRUPOLE") 
           !
@@ -1664,7 +1669,7 @@ module diatom_module
              if (action%fitting) call report ("L2 cannot appear after FITTING",.true.)
              !
              !
-          case("BOB-ROT","BOBROT")
+          case("BOB-ROT","BOBROT","ROTATIONAL-NONADIABATIC-G-FACTOR", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
              !
              iobject(7) = iobject(7) + 1
              !
@@ -1688,6 +1693,8 @@ module diatom_module
                 endif
              enddo
              !
+             field_name = trim(w)
+             !
              if (.not.include_state) then
                  !write(out,"('The BOB-ROT term ',1i8,' is skipped')") iref
                  iobject(7) = iobject(7) - 1
@@ -1700,13 +1707,23 @@ module diatom_module
              !
              ibobrot = iobject(7)
              !
+             ! The rotational g factor is the alpha(R) function multiplied by m_e / m_p (electron mass / proton mass)
+             ! See, e.g., eq. (4) of S.P.A. Sauer, Chemical Physics Letters 297, 475-483 (1998)
+             if(trim(field_name) == "ROTATIONAL-NONADIABATIC-G-FACTOR") then
+               !bobrot(ibobrot) = bobrot(ibobrot)*(proton_to_electron_mass_ratio/umatoau)
+               write(*,*) 'proton_to_electron_mass_ratio/umatoau = ', proton_to_electron_mass_ratio/umatoau
+               write(*,*) 'TO BE DONE YET'
+             else
+               write(*,*) 'TO BE DONE YET22'
+             endif
+             !
              field => bobrot(ibobrot)
              !
              call set_field_refs(field,iref,jref,istate_,istate_)
              !
              field%class = trim(classnames(7))
              !
-             if (action%fitting) call report ("BOBrot cannot appear after FITTING",.true.)
+             if (action%fitting) call report (trim(field_name) // " cannot appear after FITTING",.true.)
              !
           case("SPIN-SPIN")
              !
@@ -2140,7 +2157,7 @@ module diatom_module
                    endif
                enddo loop_istate_abl2
 
-             case("BOB-ROT","BOBROT")
+             case("BOB-ROT","BOBROT", "ROTATIONAL-NONADIABATIC-G-FACTOR", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
                !
                ! find the corresponding BB
                !

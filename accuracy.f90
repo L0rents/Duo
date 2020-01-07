@@ -5,6 +5,7 @@ module accuracy
   public accuracyInitialize, print_physical_constants
   public planck,avogno,vellgt,boltz,bohr,todebye, umatoau
   public epsil,small_,sqrt2,sqrt3,rad,fititermax,aston,hartree,ev,my_fmt
+  public proton_to_electron_mass_ratio
   !
   integer, parameter :: sik         = selected_int_kind(4)       ! Small integers
   integer, parameter :: ik          = selected_int_kind(8)       ! "Normal" integers. This must map on
@@ -53,6 +54,7 @@ module accuracy
   real(drk), parameter :: hartree    =  219474.6313708_rk         ! hartree in cm-1
   real(drk), parameter :: uma        =  1.660538921e-24_rk        ! unified atomic mass unit [=mass(C-12)/12 ] in grams
   real(drk), parameter :: e_charge   =  1.602176565e-19_rk        ! electron charge in Coulombs
+  real(drk), parameter :: proton_to_electron_mass_ratio =  1836.15267343_rk        ! mass(proton)/mass(electron)
   real(drk), parameter :: aston      =  planck/(8._rk*PI**2*vellgt*uma*1e-16_rk)  !rotational factor in cm-1 amu Ang^2
   real(drk), parameter :: umatoau    =  bohr**2 *hartree /(2._rk*aston)   ! uma (Daltons) to a.u. (electron masses)=~1822.888...
   real(drk), parameter :: me         =  uma/umatoau                       ! electron mass in grams
@@ -85,6 +87,8 @@ module accuracy
 
       write(out,'(A40,F20.14)')   'Fine structure constant 1/alpha = ', 1._rk / alpha
       write(out,'(A40,ES20.12,2x,a12)') 'Electron mass me = ', me, 'grams'
+      write(out,'(A40,F20.13,2x,a12)')  'Proton-to-electron mass ratio = ', proton_to_electron_mass_ratio
+      write(out,'(A40,F20.13,2x,a12)')  'Proton mass = ', proton_to_electron_mass_ratio/umatoau, 'u'
       write(out,'(A40,F20.12,2x,a12)') 'a.u. of dipole e*a0 = ', todebye, 'debyes'
       write(out,'(A40,ES20.12,2x,a12)') "1 erg      => ",1e-7_rk , 'Joule'
       write(out,'(A40,ES20.12,2x,a12)') "1 erg      => ", 1._rk/hc, 'cm^-1'
