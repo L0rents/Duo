@@ -1,5 +1,6 @@
-masses 1.007276452321  1.007276452321
+atoms H H
 molecule H2
+use_atomic_masses
 
 do_not_echo_input
 

@@ -137,7 +137,7 @@ module diatom_module
     character(len=cl)    :: interpolation_type='CUBICSPLINES'
     !
     !character(len=cl)    :: interpolation_type='QUINTICSPLINES'
-    !
+    !field
     integer(ik)          :: iref         ! reference number of the term as given in input (bra in case of the coupling)
     integer(ik)          :: jref         ! reference number of the coupling term as given in input (ket in case of the coupling)
     integer(ik)          :: istate       ! the actual state number (bra in case of the coupling)
@@ -239,6 +239,7 @@ module diatom_module
       logical             :: print_pecs_and_couplings_to_file = .false. ! if .true. prints to file
       logical             :: assign_v_by_count = .false.
       logical             :: legacy_version = .false.
+      integer(ik)         :: mass_flag=0  ! when using masses from interal database: 0=atomic (default); 1=nuclear masses; 2=nuclear+core-electrons
       !
   end type jobT
   !
@@ -506,7 +507,7 @@ module diatom_module
       call input_options(echo_lines=.false.,error_flag=1)
     endif
 
-    do
+read_input_loop: do
         zNparam_defined = .false. ! For each input block, set number of points/params to undefined
         call read_line(eof,iut) ; if (eof) exit
         call readu(w)
@@ -515,13 +516,22 @@ module diatom_module
         case("STOP","FINISH","END")
           exit
         !
-       case("PRINT_PECS_AND_COUPLINGS_TO_FILE")
+        case("USE_ATOMIC_MASSES")
+         job%mass_flag = 0
+        !
+        case("USE_NUCLEAR_MASSES")
+         job%mass_flag = 1
+        !
+        case("USE_NUCLEAR_PLUS_CORE_ELECTRONS_MASSES")
+         job%mass_flag = 2
+        !
+        case("PRINT_PECS_AND_COUPLINGS_TO_FILE")
          job%print_pecs_and_couplings_to_file = .true.
         !
-       case("PRINT_VIBRATIONAL_ENERGIES_TO_FILE")
+        case("PRINT_VIBRATIONAL_ENERGIES_TO_FILE")
          job%print_vibrational_energies_to_file = .true.
         !
-       case("PRINT_ROVIBRONIC_ENERGIES_TO_FILE")
+        case("PRINT_ROVIBRONIC_ENERGIES_TO_FILE")
          !
          job%print_rovibronic_energies_to_file = .true.
         case("DO_NOT_ECHO_INPUT") 
@@ -1417,7 +1427,8 @@ module diatom_module
        case("SPIN-ORBIT","SPIN-ORBIT-X","POTEN","POTENTIAL","L2","L**2","LXLY","LYLX","ABINITIO",&
             "LPLUS","L+","L_+","LX","DIPOLE","TM","DIPOLE-MOMENT","DIPOLE-X",&
             "SPIN-SPIN","SPIN-SPIN-O", &
-            "BOBROT", "BOB-ROT","ROTATIONAL-NONADIABATIC-G-FACTOR", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION", &
+            "BOBROT", "BOB-ROT","ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION", &
+                                                                    "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION", &
             "SPIN-ROT","DIABATIC","DIABAT",&
             "LAMBDA-OPQ","LAMBDA-P2Q","LAMBDA-Q","LAMBDAOPQ","LAMBDAP2Q","LAMBDAQ",&
             "QUADRUPOLE") 
@@ -1669,7 +1680,8 @@ module diatom_module
              if (action%fitting) call report ("L2 cannot appear after FITTING",.true.)
              !
              !
-          case("BOB-ROT","BOBROT","ROTATIONAL-NONADIABATIC-G-FACTOR", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
+          case("BOB-ROT","BOBROT","ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION", &
+               "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
              !
              iobject(7) = iobject(7) + 1
              !
@@ -1707,13 +1719,13 @@ module diatom_module
              !
              ibobrot = iobject(7)
              !
-             ! The rotational g factor is the alpha(R) function multiplied by m_e / m_p (electron mass / proton mass)
+             ! The rotational g factor is the alpha(r) function multiplied by m_e / m_p (electron mass / proton mass)
              ! See, e.g., eq. (4) of S.P.A. Sauer, Chemical Physics Letters 297, 475-483 (1998)
-             if(trim(field_name) == "ROTATIONAL-NONADIABATIC-G-FACTOR") then
-               !bobrot(ibobrot) = bobrot(ibobrot)*(proton_to_electron_mass_ratio/umatoau)
-               write(*,*) 'proton_to_electron_mass_ratio/umatoau = ', proton_to_electron_mass_ratio/umatoau
-               write(*,*) 'TO BE DONE YET'
-             else
+             if(trim(field_name) == "ROTATIONAL-NONADIABATIC-G-FUNCTION") then
+               field%factor = proton_to_electron_mass_ratio/umatoau
+               write(*,*) 'proton_to_electron_mass_ratio/umatoau = ', field%factor
+             else if(trim(field_name) == "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION") then
+               field%factor = 1.0_rk
                write(*,*) 'TO BE DONE YET22'
              endif
              !
@@ -2157,7 +2169,7 @@ module diatom_module
                    endif
                enddo loop_istate_abl2
 
-             case("BOB-ROT","BOBROT", "ROTATIONAL-NONADIABATIC-G-FACTOR", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
+             case("BOB-ROT","BOBROT", "ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
                !
                ! find the corresponding BB
                !
@@ -2886,7 +2898,7 @@ module diatom_module
               !
               field%Nterms = Nparam
               !
-              ! Allocation of the pot. parameters
+              ! Allocation of the field (potential of other curve)
               !
               allocate(field%value(Nparam),field%forcename(Nparam),field%grid(Nparam),field%weight(Nparam),stat=alloc)
               call ArrayStart(trim(field%type),alloc,Nparam,kind(field%value))
@@ -3424,7 +3436,7 @@ module diatom_module
          call report ("Principal keyword "//trim(w)//" not recognized",.true.)
        end select
        !
-    end do
+    end do read_input_loop
     !
     Nestates = iobject(1)
     !
@@ -4750,7 +4762,7 @@ subroutine map_fields_onto_grid(iverbose)
      call check_and_print_coupling(Nss,        iverbose,spinspin, "Spin-spin functions:")
      call check_and_print_coupling(Nsso,       iverbose,spinspino,"Spin-spin-o (non-diagonal) functions:")
      call check_and_print_coupling(Nsr,        iverbose,spinrot,  "Spin-rotation functions:")
-     call check_and_print_coupling(Nbobrot,    iverbose,bobrot,   "Bob-Rot centrifugal functions:")
+     call check_and_print_coupling(Nbobrot,    iverbose,bobrot,   "Rotational non-adiabatic (BOB) alpha(r) functions:")
      call check_and_print_coupling(Ndiabatic,  iverbose,diabatic, "Diabatic functions:")
      call check_and_print_coupling(Nlambdaopq, iverbose,lambdaopq,"Lambda-opq:")
      call check_and_print_coupling(Nlambdap2q, iverbose,lambdap2q,"Lambda-p2q:")

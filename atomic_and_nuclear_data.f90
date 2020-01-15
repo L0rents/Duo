@@ -31,7 +31,11 @@
 !                                                       `string' is character(len=8) and contains the symbol in the format C-14 etc
 !
 module atomic_and_nuclear_data
+!
+use accuracy, only: umatoau
+!
 implicit none
+!
 private
 ! public atomic_mass, nuclear_spin, print_atomic_and_nuclear_info ! make available only what I need for DUO
 !
@@ -2754,9 +2758,9 @@ subroutine print_atomic_and_nuclear_info(my_string,verbose,unit)
 
   ! NB in principle for consistency I should use the value of the electron mass from the physical_constants
   ! module (but it really doesn't matter).
-  my_nuclear_mass            =  my_atomic_mass  - real(zi,dp)          / 1822.8884861185961_dp
-  my_nuclear_plus_core_mass  =  my_nuclear_mass + real(n_core(zi),dp)  / 1822.8884861185961_dp
-  my_nuclear_plus_core_mass2 =  my_nuclear_mass + real(n_core2(zi),dp) / 1822.8884861185961_dp
+  my_nuclear_mass            =  my_atomic_mass  - real(zi,dp)          / umatoau
+  my_nuclear_plus_core_mass  =  my_nuclear_mass + real(n_core(zi),dp)  / umatoau
+  my_nuclear_plus_core_mass2 =  my_nuclear_mass + real(n_core2(zi),dp) / umatoau
 
   if (iverbose>=4) write(u1,'(A,a)'       )  'Nuclide full name          = ', trim(my_nuclide_name)
   if (iverbose>=4) write(u1,'(A,A)'       )  'Element name               = ', trim(my_element_name)

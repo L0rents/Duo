@@ -1,4 +1,4 @@
-goal:   duo.x
+all:   duo.x
 
 tarball:
 	tar cf duo.tar makefile *.f90
@@ -70,7 +70,7 @@ input.o:  input.f90
 header_info.o:  accuracy.o
 	$(FOR) -c header_info.f90 $(FFLAGS)
 
-atomic_and_nuclear_data.o:  atomic_and_nuclear_data.f90
+atomic_and_nuclear_data.o:  atomic_and_nuclear_data.f90 accuracy.o
 	$(FOR) -c atomic_and_nuclear_data.f90 $(FFLAGS)
 
 Lobatto.o: Lobatto.f90 timer.o timer.o symmetry.o
