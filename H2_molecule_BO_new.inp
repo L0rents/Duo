@@ -1,28 +1,28 @@
 atoms H H
 molecule H2
-use_atomic_masses
-
+use_nuclear_masses
+masses 1.007276452321 1.007276452321
 do_not_echo_input
 
 nstates 1
-jrot  0.0
+jrot  0.0 10.0
 SYMMETRY Cs(M)
 SolutionMethod Sinc
 
 grid
-  npoints  20
+  npoints  60
   range  0.20, 2.9
 end 
 
 DIAGONALIZER 
   SYEV
-  enermax  35000.0
+  enermax  40000.0
   nroots 100
 end
 
 CONTRACTION
   vib  
-  vmax  10
+  vmax  25
 END
 
 poten 1
@@ -5996,6 +5996,8 @@ values
   19.994999999999997         -1.000000106903160546
   20.000000000000000         -1.000000106740130068
 end
+
+END
 
 ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION 1 1
 name "H2 alpha(r) for rotational non-adiabatic corrections (from Pachucki)"
