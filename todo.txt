@@ -1,3 +1,6 @@
+make work the 'use_atomic_masses' etc. params
+
+----
 in diatom.f90, around line 1500, write the section to read in the rotational-nonadiabatic
 and vibrational non-adiabatic position-dependent masses
 

@@ -516,13 +516,13 @@ read_input_loop: do
         case("STOP","FINISH","END")
           exit
         !
-        case("USE_ATOMIC_MASSES")
+        case("USE_ATOMIC_MASSES", "USE_ATOMIC_MASS")
          job%mass_flag = 0
         !
-        case("USE_NUCLEAR_MASSES")
+        case("USE_NUCLEAR_MASSES", "USE_NUCLEAR_MASS")
          job%mass_flag = 1
         !
-        case("USE_NUCLEAR_PLUS_CORE_ELECTRONS_MASSES")
+        case("USE_NUCLEAR_PLUS_CORE_ELECTRONS_MASSES", "USE_NUCLEAR_PLUS_CORE_ELECTRONS_MASS", "USE_NUCLEAR_PLUS_CORE_MASS")
          job%mass_flag = 2
         !
         case("PRINT_PECS_AND_COUPLINGS_TO_FILE")
@@ -1424,7 +1424,9 @@ read_input_loop: do
             call report ('wrong last line in FITTING ',.false.)
          endif
           !
-       case("SPIN-ORBIT","SPIN-ORBIT-X","POTEN","POTENTIAL","L2","L**2","LXLY","LYLX","ABINITIO",&
+       case("SPIN-ORBIT","SPIN-ORBIT-X", &
+            "POTEN","POTENTIAL","BO_POTENTIAL","BORN_OPPENHEIMER_POTENTIAL","CLAMPED_NUCLEI_POTENTIAL", &
+            "L2","L**2","LXLY","LYLX","ABINITIO",&
             "LPLUS","L+","L_+","LX","DIPOLE","TM","DIPOLE-MOMENT","DIPOLE-X",&
             "SPIN-SPIN","SPIN-SPIN-O", &
             "BOBROT", "BOB-ROT","ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION", &
@@ -1593,7 +1595,7 @@ read_input_loop: do
                field%molpro = .true.
              endif
              !
-          case("POTEN","POTENTIAL")
+          case("POTEN","POTENTIAL","BO_POTENTIAL","BORN_OPPENHEIMER_POTENTIAL","CLAMPED_NUCLEI_POTENTIAL")
              !
              iobject(1) = iobject(1) + 1
              !
@@ -3871,8 +3873,8 @@ read_input_loop: do
 ! if chemical symbols of the atoms are given in ATOMS gets from those masses and spins.
 ! if masses or spins are given explicitely, uses those values
 subroutine check_and_set_atomic_data(iverbose)
-   use atomic_and_nuclear_data, only: print_atomic_and_nuclear_info, get_z, get_a, get_m, atomic_mass, &
-                                      get_name_from_mass !, nuclear_spin
+   use atomic_and_nuclear_data, only: print_atomic_and_nuclear_info, get_z, get_a, get_m, atomic_mass, nuclear_mass, &
+                                      nuclear_plus_core_mass, get_name_from_mass !, nuclear_spin
    integer,intent(in) :: iverbose
    integer :: zi, ai, m
    real(kind=rk) m1_ref, m2_ref
@@ -3923,10 +3925,25 @@ subroutine check_and_set_atomic_data(iverbose)
          return
        endif
 
-       if( ai >0   .and. m >= 0 ) m1_ref = atomic_mass(zi,ai,m)
-       if( ai >0   .and. m <  0 ) m1_ref = atomic_mass(zi,ai)
-       if( ai <= 0 .and. m >= 0 ) m1_ref = atomic_mass(zi,m=m)
-       if( ai <= 0 .and. m  < 0 ) m1_ref = atomic_mass(zi)
+       select case(job%mass_flag)
+        case(0)
+           if( ai >0   .and. m >= 0 ) m1_ref = atomic_mass(zi,ai,m)
+           if( ai >0   .and. m <  0 ) m1_ref = atomic_mass(zi,ai)
+           if( ai <= 0 .and. m >= 0 ) m1_ref = atomic_mass(zi,m=m)
+           if( ai <= 0 .and. m  < 0 ) m1_ref = atomic_mass(zi)
+        case(1)
+           if( ai >0   .and. m >= 0 ) m1_ref = nuclear_mass(zi,ai,m)
+           if( ai >0   .and. m <  0 ) m1_ref = nuclear_mass(zi,ai)
+           if( ai <= 0 .and. m >= 0 ) m1_ref = nuclear_mass(zi,m=m)
+           if( ai <= 0 .and. m  < 0 ) m1_ref = nuclear_mass(zi)
+        case(2)
+           if( ai >0   .and. m >= 0 ) m1_ref = nuclear_plus_core_mass(zi,ai,m)
+           if( ai >0   .and. m <  0 ) m1_ref = nuclear_plus_core_mass(zi,ai)
+           if( ai <= 0 .and. m >= 0 ) m1_ref = nuclear_plus_core_mass(zi,m=m)
+           if( ai <= 0 .and. m  < 0 ) m1_ref = nuclear_plus_core_mass(zi)
+        case default
+           write(out,'(A)') 'Unknown specification for mass type, job%mass_flag = ', job%mass_flag
+        end select
 
        if( m1_ref <= 0._rk) then
            write(out,'(A)') 'Error: cannot use mass from internal database because: element not found.'
@@ -3982,10 +3999,25 @@ subroutine check_and_set_atomic_data(iverbose)
          return
        endif
 
-       if( ai >0   .and. m >= 0 ) m2_ref = atomic_mass(zi,ai,m)
-       if( ai >0   .and. m <  0 ) m2_ref = atomic_mass(zi,ai)
-       if( ai <= 0 .and. m >= 0 ) m2_ref = atomic_mass(zi,m=m)
-       if( ai <= 0 .and. m  < 0 ) m2_ref = atomic_mass(zi)
+       select case(job%mass_flag)
+        case(0)
+           if( ai >0   .and. m >= 0 ) m2_ref = atomic_mass(zi,ai,m)
+           if( ai >0   .and. m <  0 ) m2_ref = atomic_mass(zi,ai)
+           if( ai <= 0 .and. m >= 0 ) m2_ref = atomic_mass(zi,m=m)
+           if( ai <= 0 .and. m  < 0 ) m2_ref = atomic_mass(zi)
+        case(1)
+           if( ai >0   .and. m >= 0 ) m2_ref = nuclear_mass(zi,ai,m)
+           if( ai >0   .and. m <  0 ) m2_ref = nuclear_mass(zi,ai)
+           if( ai <= 0 .and. m >= 0 ) m2_ref = nuclear_mass(zi,m=m)
+           if( ai <= 0 .and. m  < 0 ) m2_ref = nuclear_mass(zi)
+        case(2)
+           if( ai >0   .and. m >= 0 ) m2_ref = nuclear_plus_core_mass(zi,ai,m)
+           if( ai >0   .and. m <  0 ) m2_ref = nuclear_plus_core_mass(zi,ai)
+           if( ai <= 0 .and. m >= 0 ) m2_ref = nuclear_plus_core_mass(zi,m=m)
+           if( ai <= 0 .and. m  < 0 ) m2_ref = nuclear_plus_core_mass(zi)
+        case default
+           write(out,'(A)') 'Unknown specification for mass type, job%mass_flag = ', job%mass_flag
+        end select
 
        if( m2_ref <= 0._rk) then
            if (iverbose>=4) write(out,'(A)') 'Error: cannot use mass from internal database because: element not found.'

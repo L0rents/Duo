@@ -1,7 +1,6 @@
-atoms H H
+atoms H-1 H-1
 molecule H2
-use_nuclear_masses
-masses 1.007276452321 1.007276452321
+use_nuclear_mass
 do_not_echo_input
 
 nstates 1
@@ -25,7 +24,7 @@ CONTRACTION
   vmax  25
 END
 
-poten 1
+BORN_OPPENHEIMER_POTENTIAL 1
 name "H2 BO PEC"
 type   grid
 lambda 0
@@ -5996,6 +5995,13 @@ values
   19.994999999999997         -1.000000106903160546
   20.000000000000000         -1.000000106740130068
 end
+
+
+
+
+
+
+
 
 END
 

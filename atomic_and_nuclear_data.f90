@@ -39,7 +39,8 @@ implicit none
 private
 ! public atomic_mass, nuclear_spin, print_atomic_and_nuclear_info ! make available only what I need for DUO
 !
-public element_name, element_symbol, nuclide_name, atomic_mass, atomic_mass_unc, stability_info, half_life, half_life_txt, &
+public element_name, element_symbol, nuclide_name, atomic_mass, atomic_mass_unc, nuclear_mass, nuclear_plus_core_mass, &
+       stability_info, half_life, half_life_txt, &
        nuclear_spin, nat_iso_abundance, get_z, get_a, get_m, print_atomic_and_nuclear_info, get_name_from_mass
 !
 integer, parameter :: dp=kind(1.d0)
@@ -2399,6 +2400,26 @@ pure function ii(zin, ain, m)
 
 end function ii
 
+! gives nuclear mass + mass of core electrons (std def) of the element
+pure function nuclear_plus_core_mass(zin,ain,m)
+   integer, intent(in)  :: zin
+   integer, optional, intent(in)  :: ain
+   integer, optional, intent(in)  :: m
+   real(kind=dp) :: nuclear_plus_core_mass
+
+    nuclear_plus_core_mass = nuclear_mass(zin,ain,m) + real(n_core(zin),dp)  / umatoau
+end function nuclear_plus_core_mass
+
+
+! gives nuclear mass of the element
+pure function nuclear_mass(zin,ain,m)
+   integer, intent(in)  :: zin
+   integer, optional, intent(in)  :: ain
+   integer, optional, intent(in)  :: m
+   real(kind=dp) :: nuclear_mass
+
+    nuclear_mass = atomic_mass(zin,ain,m) - real(zin,dp) / umatoau
+end function nuclear_mass
 
 ! gives atomic mass of the element
 pure function atomic_mass(zin,ain,m)
@@ -2411,8 +2432,6 @@ pure function atomic_mass(zin,ain,m)
     if( present(ain)         .and. (.not. present(m)) ) atomic_mass = mass( ii(zin, ain) )
     if( (.not. present(ain)) .and. present(m)         ) atomic_mass = mass( ii(zin, m=m) )
     if( (.not. present(ain)) .and. (.not. present(m)) ) atomic_mass = mass( ii(zin) )
-   
- 
 end function atomic_mass
 
 ! gives atomic mass uncertainty of the element
@@ -2776,8 +2795,9 @@ subroutine print_atomic_and_nuclear_info(my_string,verbose,unit)
                                              ' Daltons'
   if (iverbose>=4) write(u1,'(A,F20.12,A)')  'Nuclear mass               = ', my_nuclear_mass,'   (=atomic mass - Z*me)'
 
-  if (iverbose>=4) write(u1,'(A,F20.12,A,i3,a)')     'Nuclear mass + core elec.  = ', my_nuclear_plus_core_mass, &
-                                                                   '   (=nuclear mass + ',n_core(zi),'*me)' !&
+  if (iverbose>=4 .and. n_core(zi) > 0) write(u1,'(A,F20.12,A,i3,a)')  'Nuclear mass + core elec.  = ', &
+                                                                        my_nuclear_plus_core_mass, &
+                                                                     '   (=nuclear mass + ',n_core(zi),'*me)' !&
 !    // " [core elec. = those in filled noble-gas shells]"
 
 !   write(u1,'(A,F20.12,A,i3,a)')     'Nuclear mass + core elec.  = ', my_nuclear_plus_core_mass2, &
