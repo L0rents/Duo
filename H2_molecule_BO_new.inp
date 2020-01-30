@@ -4,7 +4,7 @@ use_nuclear_mass
 do_not_echo_input
 
 nstates 1
-jrot  0.0 0.0
+jrot  0.0 10.0
 SYMMETRY Cs(M)
 SolutionMethod Sinc
 
@@ -21,8 +21,9 @@ end
 
 CONTRACTION
   vib  
-  vmax  30
+  vmax  25
 END
+
 
 BORN_OPPENHEIMER_POTENTIAL 1
 name "H2 BO PEC"
@@ -35,7 +36,7 @@ units  bohrs
 interpolationType CubicSplines
 values
    0.100000000000000          7.127216731132000049
-   0.102500000000000          6.884716908930196944
+   0.102500000000000          6.8847169089301969444
    0.105000000000000          6.653854895883911880
    0.107500000000000          6.433819951503268797
    0.110000000000000          6.223875005377619729
@@ -5997,12 +5998,12 @@ values
 end
 
 
-DIABATIC 1 1
+ADIABATIC_CORRECTION 1
 name "H2 BODC PEC"
 type   grid
-lambda 0 0
-mult   1 1
-symmetry + +
+lambda 0
+mult   1
+symmetry +
 units  hartree
 units  bohrs
 interpolationType CubicSplines
@@ -6407,13 +6408,6 @@ values
 19.95	5.4461673478894E-04
 20.00	5.4461673909310E-04
 end
-
-
-
-
-
-
-END
 
 ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION 1 1
 name "H2 alpha(r) for rotational non-adiabatic corrections (from Pachucki)"

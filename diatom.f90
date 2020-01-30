@@ -61,8 +61,8 @@ module diatom_module
   !
   !
   ! Lorenzo Lodi: it is necessary to repeat the character length specification in the array contructor for Fortran2003 conformance
-  character(len=wl),parameter :: CLASSNAMES(1:Nobjects)  = (/ character(len=wl):: "POTEN","SPINORBIT","L2", "L+","SPIN-SPIN",&
-                                                             "SPIN-SPIN-O","BOBROT","SPIN-ROT","DIABATIC","LAMBDAOPQ", &
+  character(len=wl),parameter :: CLASSNAMES(1:Nobjects)  = (/ character(len=wl):: "POTENTIAL","SPINORBIT","L2", "L+","SPIN-SPIN",&
+                                                             "SPIN-SPIN-O","BOBROT","SPIN-ROT","(A)DIABATIC","LAMBDAOPQ", &
                                                              "LAMBDAP2Q","LAMBDAQ", "ABINITIO","BROT","DIPOLE","QUADRUPOLE"/)
   !
   ! Lorenzo Lodi
@@ -1431,7 +1431,8 @@ read_input_loop: do
             "SPIN-SPIN","SPIN-SPIN-O", &
             "BOBROT", "BOB-ROT","ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION", &
                                                                     "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION", &
-            "SPIN-ROT","DIABATIC","DIABAT",&
+            "SPIN-ROT", &
+            "DIABATIC","DIABAT", "ADIABATIC_CORRECTION", "BODC_CORRECTION", "DBOC_CORRECTION", &
             "LAMBDA-OPQ","LAMBDA-P2Q","LAMBDA-Q","LAMBDAOPQ","LAMBDAP2Q","LAMBDAQ",&
             "QUADRUPOLE") 
           !
@@ -1728,7 +1729,7 @@ read_input_loop: do
                write(*,*) 'proton_to_electron_mass_ratio/umatoau = ', field%factor
              else if(trim(field_name) == "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION") then
                field%factor = 1.0_rk
-               write(*,*) 'TO BE DONE YET22'
+               write(*,*) 'TO BE YET DONE !!!'
              endif
              !
              field => bobrot(ibobrot)
@@ -1883,7 +1884,8 @@ read_input_loop: do
              !
              if (action%fitting) call report ("Spin-rot cannot appear after FITTING",.true.)
              !
-          case("DIABAT","DIABATIC")
+             ! At the moment the diabatic and adiabatic corrections are treated the same
+          case("DIABAT","DIABATIC", "ADIABATIC_CORRECTION", "BODC_CORRECTION", "DBOC_CORRECTION")
              !
              iobject(9) = iobject(9) + 1
              !
@@ -1909,7 +1911,7 @@ read_input_loop: do
              ! Check if it was defined before 
              do istate=1,iobject(9)-1
                 if (iref==diabatic(istate)%iref.and.jref==diabatic(istate)%jref) then
-                  call report ("diabatic object is repeated",.true.)
+                  call report ("(a)diabatic object is repeated",.true.)
                 endif
              enddo
              !
@@ -2294,7 +2296,7 @@ read_input_loop: do
                    endif
                enddo loop_istate_absr
                !
-             case("DIABATIC","DIABAT")
+             case("DIABATIC","DIABAT", "ADIABATIC_CORRECTION", "BODC_CORRECTION", "DBOC_CORRECTION")
                !
                ! find the corresponding object
                !
@@ -4795,7 +4797,7 @@ subroutine map_fields_onto_grid(iverbose)
      call check_and_print_coupling(Nsso,       iverbose,spinspino,"Spin-spin-o (non-diagonal) functions:")
      call check_and_print_coupling(Nsr,        iverbose,spinrot,  "Spin-rotation functions:")
      call check_and_print_coupling(Nbobrot,    iverbose,bobrot,   "Rotational non-adiabatic (BOB) alpha(r) functions:")
-     call check_and_print_coupling(Ndiabatic,  iverbose,diabatic, "Diabatic functions:")
+     call check_and_print_coupling(Ndiabatic,  iverbose,diabatic, "Adiabatic and diabatic functions:")
      call check_and_print_coupling(Nlambdaopq, iverbose,lambdaopq,"Lambda-opq:")
      call check_and_print_coupling(Nlambdap2q, iverbose,lambdap2q,"Lambda-p2q:")
      call check_and_print_coupling(Nlambdaq,   iverbose,lambdaq,  "Lambda-q:")
@@ -7211,7 +7213,10 @@ end subroutine map_fields_onto_grid
               endif
             enddo
             !
-            ! Diabatic non-diagonal contribution  term
+            ! Diabatic diagonal and non-diagonal contributions
+            ! Apart from diabatic coupling, such terms may represent any other
+            ! coupling with selection rules:  |Delta S| = 0,  |Delta Lambda| = 0, |Delta Sigma| = 0
+            ! E.g., adiabatic coupling
             !
             do idiab = 1,Ndiabatic
               if (diabatic(idiab)%istate==istate.and.diabatic(idiab)%jstate==jstate.and.&
