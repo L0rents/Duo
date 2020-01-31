@@ -1932,7 +1932,7 @@ read_input_loop: do
              call set_field_refs(field,iref,jref,istate_,jstate_)
              field%class = trim(classnames(9))
              !
-             if (action%fitting) call report ("DIABATIC cannot appear after FITTING",.true.)
+             if (action%fitting) call report (trim(w) // " cannot appear after FITTING",.true.)
              !
           case("LAMBDA-OPQ","LAMBDAOPQ")  ! o+p+q
              !
@@ -2180,7 +2180,7 @@ read_input_loop: do
                call readi(iref) ; jref = iref
                !
                include_state = .false.
-               loop_istate_abbobr : do i=1,NL2
+               loop_istate_abbobr : do i=1,Nbobrot !formely: i=1,NL2
                    if (iref==bobrot(i)%iref) then
                      include_state = .true.
                      !istate_ = istate
@@ -2570,9 +2570,9 @@ read_input_loop: do
                   !
                   if (poten(field%jstate)%ix_lz_y/=field%jx_lz_y) then
                     !
-                    write(out,"('input: ',a,2i4,' <x|lz|y> disagrees with previsouly given <x|Lz|z> value ',2i8)") & 
+                    write(out,"('input: ',a,2i4,' <x|lz|y> disagrees with previously given <x|Lz|z> value ',2i8)") &
                             trim(field%class),field%iref,field%jref,poten(field%istate)%ix_lz_y/=field%jx_lz_y
-                    call report (" <x|lz|y> disagrees with the previsouly given <x|Lz|z>-value",.true.)
+                    call report (" <x|lz|y> disagrees with the previously given <x|Lz|z>-value",.true.)
                     !
                   endif
                 endif
@@ -7070,7 +7070,7 @@ end subroutine map_fields_onto_grid
        if (iverbose>=4) write(out,'(/"Contracted basis set:")')
        if (iverbose>=4) write(out,'("     i     jrot ilevel ivib state v     spin    sigma lambda   omega   Name")')
        !
-       ! biuld the bookkeeping: the object icontr will store this informtion
+       ! build the bookkeeping: the object icontr will store this informtion
        !
        i = 0
        do ilevel = 1,Nlambdasigmas
