@@ -50,6 +50,7 @@ Temporary Items
 .cproject
 .project
 .settings
+.vscode
 
 #duo executable
 duo.x
