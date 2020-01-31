@@ -1724,12 +1724,19 @@ read_input_loop: do
              !
              ! The rotational g factor is the alpha(r) function multiplied by m_e / m_p (electron mass / proton mass)
              ! See, e.g., eq. (4) of S.P.A. Sauer, Chemical Physics Letters 297, 475-483 (1998)
+
+             write(*,*) 'field%factor =' , field%factor
              if(trim(field_name) == "ROTATIONAL-NONADIABATIC-G-FUNCTION") then
                field%factor = proton_to_electron_mass_ratio/umatoau
                write(*,*) 'proton_to_electron_mass_ratio/umatoau = ', field%factor
+
              else if(trim(field_name) == "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION") then
-               field%factor = 1.0_rk
-               write(*,*) 'TO BE YET DONE !!!'
+               ! the relation is: alpha(r) = 2*W_perp(r)/mu , where mu is the (nuclear) reduced mass
+               field%factor = 2.0_rk
+               ! I should divide by amass, but this quantity is not yet available at this point in the calculation!
+               call check_and_set_atomic_data(0) ! let's call it now
+               write(*,*) amass
+               write(*,*) 'ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION NOT YET PROPERLY IMPLEMENTED !!!'
              endif
              !
              field => bobrot(ibobrot)
