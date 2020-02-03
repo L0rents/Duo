@@ -18,6 +18,12 @@
       end function
     end interface
 
+    integer, dimension(8) :: values
+    call date_and_time(VALUES=values)
+    write(out, '(a,i4,a,i2.2,a,i2.2, 1x, i2.2, a, i2.2, a, i2.2, a, i3.3, a,i4.4,a)') &
+               "Current system time is: ", values(1), "-", values(2), "-",values(3), &
+               values(5), ":", values(6), ":", values(7), ".", values(8), " (UTC+",values(4),")"
+
     !
      if (verbose>=3) call write_logo
  !    if (verbose>=3) call write_compilation_details
