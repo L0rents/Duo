@@ -6349,7 +6349,7 @@ end subroutine map_fields_onto_grid
      !
      zpe = 0
      !
-     ! Lobbato grids, abcissas and weighs 
+     ! Lobbato grids, abscissas and weights
      if (grid%nsub == 6) then
        call LobattoAbsWeights(LobAbs,LobWeights,ngrid,grid%rmin,grid%rmax)
        call derLobattoMat(LobDerivs,ngrid-2,LobAbs,LobWeights)  ! SY a bug
