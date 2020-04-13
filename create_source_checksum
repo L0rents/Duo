@@ -1,0 +1,1 @@
+cat accuracy.f90 atomic_and_nuclear_data.f90 diatom.f90 dipole.f90 duo.f90 functions.f90 grids.f90 header_info.f90 input.f90 lapack.f90 Lobatto.f90 quadrupole.f90 refinement.f90 symmetry.f90 timer.f90 | md5sum
