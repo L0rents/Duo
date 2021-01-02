@@ -1894,7 +1894,7 @@ read_input_loop: do
              !
              if (action%fitting) call report ("Spin-rot cannot appear after FITTING",.true.)
              !
-             ! At the moment diabatic, adiabatic and nonadiabatic couplings are treated the same
+             ! At the moment diabatic, adiabatic and nonadiabatic couplings are treated exactly the same
           case("DIABAT","DIABATIC", "ADIABATIC_CORRECTION", "BODC_CORRECTION", "DBOC_CORRECTION", &
                "NONADIABATIC_POTENTIAL_CORRECTION")
              !

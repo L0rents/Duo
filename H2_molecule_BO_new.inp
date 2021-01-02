@@ -9,13 +9,13 @@ SYMMETRY Cs(M)
 SolutionMethod Sinc
 
 grid
-  npoints  60
+  npoints  160
   range  0.20, 2.9
 end 
 
 DIAGONALIZER 
   SYEV
-  enermax  40000.0
+  enermax  25000.0
   nroots 100
 end
 
