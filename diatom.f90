@@ -6428,6 +6428,11 @@ end subroutine map_fields_onto_grid
      !
      h12 = 12.0_rk*hstep**2
      sc  = h12*scale
+
+     !L Lodi
+     write(*,*) 'amass, aston = ', amass, aston
+     write(*,*) 'scale, h12, sc = ', scale, h12, sc
+
      !
      b_rot = aston/amass
      !
@@ -6564,12 +6569,34 @@ end subroutine map_fields_onto_grid
                 write(out, '(A)') 'Use 5PointDifferences as solution method for non uniformely-spaced grids.'
                 stop
               endif
+
               vibmat(igrid,igrid) = vibmat(igrid,igrid) +(12._rk)* pi**2 / 3._rk
+
+
               !
+              ! Add vibrational non-adiabatic BOBVIB
+              ! NB it'll crash if bobvib is not defined for this state!!!
+
+
+              !write(*,*) 'VALUE OF THE POT', bobvib(istate)%gridvalue(igrid)
+              !
+              vibmat(igrid,igrid) = vibmat(igrid,igrid) + (12._rk)* (pi**2 / 3._rk) * bobvib(istate)%gridvalue(igrid)
+
+
               do jgrid =igrid+1, ngrid
                 vibmat(igrid,jgrid) = +(12._rk)*2._rk* real( (-1)**(igrid+jgrid), rk) / real(igrid - jgrid, rk)**2
+             !   vibmat(jgrid,igrid) = vibmat(igrid,jgrid)
+
+                ! Added by L LODI
+ !               vibmat(igrid,jgrid) = vibmat(igrid,jgrid) *(1._rk + bobvib(istate)%gridvalue(igrid))
+ !               vibmat(jgrid,igrid) = vibmat(jgrid,igrid) *(1._rk + bobvib(istate)%gridvalue(jgrid))
+
+                !Use symmetrised approximation (to have a symmetric matrix)
+                vibmat(igrid,jgrid) = vibmat(igrid,jgrid) *(1._rk + 0.5_rk*(bobvib(istate)%gridvalue(igrid) + &
+                                                                            bobvib(istate)%gridvalue(jgrid)))
                 vibmat(jgrid,igrid) = vibmat(igrid,jgrid)
               enddo
+
               !
             case("LOBATTO") ! Implements a DVR method based on Lobatto quadrature
                             ! Requires the Lobatto nonuniform grid to work
@@ -6601,6 +6628,17 @@ end subroutine map_fields_onto_grid
             !
        enddo
        !$omp end parallel do
+
+
+
+              do igrid=1, ngrid
+              do jgrid=1, ngrid
+                 write(*,'(f11.5)', advance='no') vibmat(igrid,jgrid)
+              enddo
+                 write(*,*)
+              enddo
+
+
        !
        if (iverbose>=4) call TimerStop('Build vibrational Hamiltonian')
        !

@@ -4,18 +4,18 @@ use_nuclear_mass
 do_not_echo_input
 
 nstates 1
-jrot  0.0 10.0
+jrot  0.0
 SYMMETRY Cs(M)
 SolutionMethod Sinc
 
 grid
-  npoints  180
-  range  0.20, 4.0
+  npoints  40
+  range  0.20, 2.2
 end 
 
 DIAGONALIZER 
   SYEV
-  enermax  25000.0
+  enermax  18000.0
   nroots 100
 end
 
@@ -33,6 +33,7 @@ mult   1
 symmetry +
 units  hartree
 units  bohrs
+factor 1
 interpolationType CubicSplines
 values
    0.100000000000000          7.127216731132000049
@@ -6007,7 +6008,7 @@ type   grid
 lambda 0
 mult   1
 symmetry +
-factor 1.0
+factor 0.0
 units  hartree
 units  bohrs
 interpolationType CubicSplines
@@ -6635,8 +6636,6 @@ values
   20.00000 -5.446170117660E-04
 end
 
-
-
 bobvib 1 1
 name "H2 beta(r)"
 type   grid
@@ -6644,7 +6643,7 @@ lambda 0 0
 mult   1 1
 symmetry + +
 units  bohrs
-factor 100000.0
+factor 1.0
 interpolationType CubicSplines
 values
 0.00	0.000000000000
@@ -6851,6 +6850,7 @@ values
 end
 
 
+stop
 
 
 ( ==================================================================================================== )
