@@ -4,13 +4,13 @@ use_nuclear_mass
 do_not_echo_input
 
 nstates 1
-jrot  0.0
+jrot  0.0 10.0
 SYMMETRY Cs(M)
 SolutionMethod Sinc
 
 grid
-  npoints  40
-  range  0.20, 2.2
+  npoints  60
+  range  0.20, 2.3
 end 
 
 DIAGONALIZER 
@@ -6008,7 +6008,7 @@ type   grid
 lambda 0
 mult   1
 symmetry +
-factor 0.0
+factor 1.0
 units  hartree
 units  bohrs
 interpolationType CubicSplines
@@ -6430,7 +6430,7 @@ lambda 0 0
 mult   1 1
 symmetry + +
 units  bohrs
-factor 1.0
+factor 1
 interpolationType CubicSplines
 values
    0.00000  0.000000000000E+00
@@ -6850,9 +6850,6 @@ values
 end
 
 
-stop
-
-
 ( ==================================================================================================== )
 nonadiabatic_potential_correction
 name "H2 non-adiabatic correction potential (from Pachucki)"
@@ -7264,5 +7261,4 @@ values
   19.95000 -2.966077776833E-07
   20.00000 -2.966077760752E-07
 end
-
 

@@ -191,7 +191,7 @@ module diatom_module
     real(rk)             :: Omega_min  !  pecs only: minimum physically possible value for |Omega|=|Lambda+Sigma|
     real(rk)             :: approxEJ0    !  pecs only: approximate J=0, v=0 energy (no couplings)
     real(rk)             :: approxEJmin  !  pecs only: approximate J=Jmin, v=0 energy (no couplings)
-
+    logical              :: zIsBobVibDefined =.false.  ! used only if the field is bobvib (non-adiabatic vibrational correction)
 
     procedure (analytical_fieldT),pointer, nopass :: analytical_field => null()
     type(linkT),pointer   :: link(:)       ! address to link with the fitting parameter in a different object in the fit
@@ -247,10 +247,10 @@ module diatom_module
   !
   type gridT
       integer(ik)   :: npoints = 1000       ! grid size
-      real(rk)      :: rmin = 1.0,rmax=3.00 ! range of the grid
-      real(rk)      :: step = 1e-2          ! step size
-      real(rk)      :: alpha = 0.2          ! grid parameter
-      real(rk)      :: re = 1.0             ! grid parameter
+      real(rk)      :: rmin = 1.0_rk,rmax=3.00_rk ! range of the grid
+      real(rk)      :: step = 1e-2_rk       ! step size
+      real(rk)      :: alpha = 0.2_rk       ! grid parameter
+      real(rk)      :: re = 1.0_rk          ! grid parameter
       integer(ik)   :: nsub = 0             ! grid type parameter (0=uniformly spaced)
       real(rk),pointer :: r(:)=>null()      ! the molecular geometry at the grid point
   end type gridT
@@ -1815,7 +1815,7 @@ read_input_loop: do
              !
              if (action%fitting) call report (trim(field_name) // " cannot appear after FITTING",.true.)
              !
-
+             field%zIsBobVibDefined = .true.
 
 
 
@@ -6386,6 +6386,7 @@ end subroutine map_fields_onto_grid
      !real(rk)                  :: f_rk
      character(len=cl)          :: filename,ioname
      integer(ik)                :: iunit,vibunit,imaxcontr,i0,imaxcontr_,mterm_
+     real(rk), allocatable       :: bobvib1stderivative(:)
      
      ! open file for later (if option is set)
      if (job%print_rovibronic_energies_to_file ) &
@@ -6428,10 +6429,6 @@ end subroutine map_fields_onto_grid
      !
      h12 = 12.0_rk*hstep**2
      sc  = h12*scale
-
-     !L Lodi
-     write(*,*) 'amass, aston = ', amass, aston
-     write(*,*) 'scale, h12, sc = ', scale, h12, sc
 
      !
      b_rot = aston/amass
@@ -6492,7 +6489,13 @@ end subroutine map_fields_onto_grid
        call derLobattoMat(LobDerivs,ngrid-2,LobAbs,LobWeights)  ! SY a bug
      endif
      !
-     do istate = 1,Nestates
+
+     ! allocated an array that will contain the the 1st derivative of
+     ! the vibrational non-adiabatic beta(r) function for state istate
+     ! It is necessary for the non-adiabatic correction
+     allocate( bobvib1stderivative(ngrid) )
+
+     loop_over_states: do istate = 1,Nestates
        !
        vibmat = 0
        !
@@ -6506,6 +6509,17 @@ end subroutine map_fields_onto_grid
        !
        if (iverbose>=4) call TimerStart('Build vibrational Hamiltonian')
        !
+
+       if( bobvib(istate)%zIsBobVibDefined ) then
+           ! pre-compute 1st derivative of the vibrational non-adiabatic beta(r) function
+           !  times DeltaX (step)
+           bobvib1stderivative(1) = bobvib(istate)%gridvalue(2)-bobvib(istate)%gridvalue(1)
+           do igrid =2, ngrid-1
+              bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
+           enddo
+           bobvib1stderivative(ngrid) = bobvib(istate)%gridvalue(ngrid)-bobvib(istate)%gridvalue(ngrid-1)
+       endif
+
        !$omp parallel do private(igrid,f_rot,epot,f_l2,iL2,erot) shared(vibmat) schedule(guided)
        do igrid =1, ngrid
          !
@@ -6575,25 +6589,29 @@ end subroutine map_fields_onto_grid
 
               !
               ! Add vibrational non-adiabatic BOBVIB
-              ! NB it'll crash if bobvib is not defined for this state!!!
 
-
-              !write(*,*) 'VALUE OF THE POT', bobvib(istate)%gridvalue(igrid)
-              !
-              vibmat(igrid,igrid) = vibmat(igrid,igrid) + (12._rk)* (pi**2 / 3._rk) * bobvib(istate)%gridvalue(igrid)
-
+              if( bobvib(istate)%zIsBobVibDefined ) then
+                 ! add the part L Lodi calls 'W' matrix
+                 vibmat(igrid,igrid) = vibmat(igrid,igrid) + (12._rk)* (pi**2 / 3._rk) * bobvib(istate)%gridvalue(igrid)
+                 ! add the part L Lodi calls 'X' matrix
+                 vibmat(igrid,igrid) = vibmat(igrid,igrid) + (12._rk)* (  (hstep/grid%r(igrid)) * &
+                                                                           bobvib1stderivative(igrid) )
+              endif
 
               do jgrid =igrid+1, ngrid
                 vibmat(igrid,jgrid) = +(12._rk)*2._rk* real( (-1)**(igrid+jgrid), rk) / real(igrid - jgrid, rk)**2
-             !   vibmat(jgrid,igrid) = vibmat(igrid,jgrid)
 
-                ! Added by L LODI
- !               vibmat(igrid,jgrid) = vibmat(igrid,jgrid) *(1._rk + bobvib(istate)%gridvalue(igrid))
- !               vibmat(jgrid,igrid) = vibmat(jgrid,igrid) *(1._rk + bobvib(istate)%gridvalue(jgrid))
-
-                !Use symmetrised approximation (to have a symmetric matrix)
+                ! Added by L Lodi, 11 January 2021
+                ! Use symmetrised approximation (to build a symmetric matrix)
+                if( bobvib(istate)%zIsBobVibDefined ) then
+                 ! add the part L Lodi calls 'W' matrix
                 vibmat(igrid,jgrid) = vibmat(igrid,jgrid) *(1._rk + 0.5_rk*(bobvib(istate)%gridvalue(igrid) + &
                                                                             bobvib(istate)%gridvalue(jgrid)))
+                 ! add the part L Lodi calls 'X' matrix
+                 vibmat(igrid,jgrid) = vibmat(igrid,jgrid) -(12._rk)*(real((-1)**(igrid-jgrid), rk)/real(igrid - jgrid, rk)) &
+                                        * 0.5_rk*( bobvib1stderivative(igrid)-bobvib1stderivative(jgrid) )
+
+                endif
                 vibmat(jgrid,igrid) = vibmat(igrid,jgrid)
               enddo
 
@@ -6630,13 +6648,13 @@ end subroutine map_fields_onto_grid
        !$omp end parallel do
 
 
-
-              do igrid=1, ngrid
-              do jgrid=1, ngrid
-                 write(*,'(f11.5)', advance='no') vibmat(igrid,jgrid)
-              enddo
-                 write(*,*)
-              enddo
+              ! L Lodi ; this will print out the hamiltonian (for tests)
+              !do igrid=1, ngrid
+              !do jgrid=1, ngrid
+              !   write(*,'(f11.6)', advance='no') vibmat(igrid,jgrid)
+              !enddo
+              !   write(*,*)
+              !enddo
 
 
        !
@@ -6741,7 +6759,9 @@ end subroutine map_fields_onto_grid
        !
        totalroots = totalroots + nroots
        !
-     enddo
+     enddo loop_over_states
+     deallocate( bobvib1stderivative )
+
      !
      ! sorting basis states (energies, basis functions and quantum numbers) from different
      ! states all together according with their energies
