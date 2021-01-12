@@ -6512,13 +6512,22 @@ end subroutine map_fields_onto_grid
        !
 
        if( bobvib(istate)%zIsBobVibDefined ) then
-           ! pre-compute 1st derivative of the vibrational non-adiabatic beta(r) function
-           !  times DeltaX (step)
-           bobvib1stderivative(1) = bobvib(istate)%gridvalue(2)-bobvib(istate)%gridvalue(1)
+           ! numerically pre-compute 1st derivative of the vibrational non-adiabatic beta(r) function
+           !  times DeltaX (i.e. step)
+           !
+           ! The following formulas uses a three-value asymmetric expression ( error in the derivative = [beta'''(x*)/3]*eps**3 )
+           !  for the first and last point, and two-point symmetric expression for the intermediate points
+           ! ( error in the derivative = [beta'''(x*)/6]*eps**3  )
+           ! START OF O(eps**3) FORMULAS
+           bobvib1stderivative(1) = -1.5_rk*bobvib(istate)%gridvalue(1)+2._rk*bobvib(istate)%gridvalue(2) &
+                                    -0.5_rk*bobvib(istate)%gridvalue(3)
            do igrid =2, ngrid-1
               bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
            enddo
-           bobvib1stderivative(ngrid) = bobvib(istate)%gridvalue(ngrid)-bobvib(istate)%gridvalue(ngrid-1)
+           bobvib1stderivative(ngrid) = 0.5_rk*bobvib(istate)%gridvalue(ngrid-2)-2._rk*bobvib(istate)%gridvalue(ngrid-1) &
+                                        +1.5_rk*bobvib(istate)%gridvalue(ngrid)
+           ! END OF O(eps**3) FORMULAS
+
        endif
 
        !$omp parallel do private(igrid,f_rot,epot,f_l2,iL2,erot) shared(vibmat) schedule(guided)
