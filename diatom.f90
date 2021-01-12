@@ -6510,24 +6510,63 @@ end subroutine map_fields_onto_grid
        !
        if (iverbose>=4) call TimerStart('Build vibrational Hamiltonian')
        !
+       if( bobvib(istate)%zIsBobVibDefined) then
+           if( ngrid < 5) then
+                            write(out, '(A)') 'Warning: because the number of points is less than 5, ' &
+                                     // ' the vibrational non-adiabatic correction will be neglected!'
+                            bobvib1stderivative = 0._rk
+           else
 
-       if( bobvib(istate)%zIsBobVibDefined ) then
            ! numerically pre-compute 1st derivative of the vibrational non-adiabatic beta(r) function
            !  times DeltaX (i.e. step)
            !
+           ! START OF O(eps**3) FORMULAS
            ! The following formulas uses a three-value asymmetric expression ( error in the derivative = [beta'''(x*)/3]*eps**3 )
            !  for the first and last point, and two-point symmetric expression for the intermediate points
            ! ( error in the derivative = [beta'''(x*)/6]*eps**3  )
-           ! START OF O(eps**3) FORMULAS
-           bobvib1stderivative(1) = -1.5_rk*bobvib(istate)%gridvalue(1)+2._rk*bobvib(istate)%gridvalue(2) &
-                                    -0.5_rk*bobvib(istate)%gridvalue(3)
-           do igrid =2, ngrid-1
-              bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
-           enddo
-           bobvib1stderivative(ngrid) = 0.5_rk*bobvib(istate)%gridvalue(ngrid-2)-2._rk*bobvib(istate)%gridvalue(ngrid-1) &
-                                        +1.5_rk*bobvib(istate)%gridvalue(ngrid)
+!           bobvib1stderivative(1) = -1.5_rk*bobvib(istate)%gridvalue(1)+2._rk*bobvib(istate)%gridvalue(2) &
+!                                    -0.5_rk*bobvib(istate)%gridvalue(3)
+!           do igrid =2, ngrid-1
+!              bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
+!           enddo
+!           bobvib1stderivative(ngrid) = 0.5_rk*bobvib(istate)%gridvalue(ngrid-2)-2._rk*bobvib(istate)%gridvalue(ngrid-1) &
+!                                        +1.5_rk*bobvib(istate)%gridvalue(ngrid)
            ! END OF O(eps**3) FORMULAS
+           !
+           !
+           ! START OF O(eps**5) FORMULAS
+           ! The following formulas uses a five-value asymmetric expression ( error in the derivative = [beta'''''(x*)/5]*eps**5 )
+           !  for the first and last point, a different five-value asymmetric expression for the second and penultimate points
+           ! ( error in the derivative = [beta'''''(x*)/20]*eps**5  )
+           ! and four-point symmetric expression for the intermediate points ( error in the derivative = [beta'''''(x*)/30]*eps**5  )
+           bobvib1stderivative(1) = -(25._rk/12._rk)*bobvib(istate)%gridvalue(1) + 4._rk*bobvib(istate)%gridvalue(2) &
+                                    - 3._rk*bobvib(istate)%gridvalue(3) + (4._rk/3._rk)*bobvib(istate)%gridvalue(4)  &
+                                    - (1._rk/4._rk)*bobvib(istate)%gridvalue(5)
+           bobvib1stderivative(2) = -(1._rk/4._rk)*bobvib(istate)%gridvalue(1) -(5._rk/6._rk)*bobvib(istate)%gridvalue(2) &
+                                    +(3._rk/2._rk)*bobvib(istate)%gridvalue(3) - (1._rk/2._rk)*bobvib(istate)%gridvalue(4)  &
+                                    +(1._rk/12._rk)*bobvib(istate)%gridvalue(5)
 
+           do igrid =3, ngrid-2
+              bobvib1stderivative(igrid) = (1._rk/12.0_rk)*bobvib(istate)%gridvalue(igrid-2) &
+                                          -(2._rk/3.0_rk) *bobvib(istate)%gridvalue(igrid-1) &
+                                          +(2._rk/3.0_rk) *bobvib(istate)%gridvalue(igrid+1) &
+                                          -(1._rk/12.0_rk)*bobvib(istate)%gridvalue(igrid+2)
+           enddo
+
+           bobvib1stderivative(ngrid-1) =-(1._rk/12._rk) *bobvib(istate)%gridvalue(ngrid-4) &
+                                         +(1._rk/2._rk)  *bobvib(istate)%gridvalue(ngrid-3) &
+                                         -(3._rk/2._rk)  *bobvib(istate)%gridvalue(ngrid-2) &
+                                         +(5._rk/6._rk)  *bobvib(istate)%gridvalue(ngrid-1) &
+                                         +(4._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid)
+
+           bobvib1stderivative(ngrid) = (1._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid-4) &
+                                       -(4._rk/3._rk)  *bobvib(istate)%gridvalue(ngrid-3) &
+                                       +3._rk          *bobvib(istate)%gridvalue(ngrid-2) &
+                                       -4._rk          *bobvib(istate)%gridvalue(ngrid-1) &
+                                       +(25._rk/12._rk)*bobvib(istate)%gridvalue(ngrid)
+           ! END OF O(eps**5) FORMULAS
+           !
+           endif
        endif
 
        !$omp parallel do private(igrid,f_rot,epot,f_l2,iL2,erot) shared(vibmat) schedule(guided)
