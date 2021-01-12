@@ -6524,13 +6524,13 @@ end subroutine map_fields_onto_grid
            ! The following formulas uses a three-value asymmetric expression ( error in the derivative = [beta'''(x*)/3]*eps**3 )
            !  for the first and last point, and two-point symmetric expression for the intermediate points
            ! ( error in the derivative = [beta'''(x*)/6]*eps**3  )
-!           bobvib1stderivative(1) = -1.5_rk*bobvib(istate)%gridvalue(1)+2._rk*bobvib(istate)%gridvalue(2) &
-!                                    -0.5_rk*bobvib(istate)%gridvalue(3)
-!           do igrid =2, ngrid-1
-!              bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
-!           enddo
-!           bobvib1stderivative(ngrid) = 0.5_rk*bobvib(istate)%gridvalue(ngrid-2)-2._rk*bobvib(istate)%gridvalue(ngrid-1) &
-!                                        +1.5_rk*bobvib(istate)%gridvalue(ngrid)
+           !bobvib1stderivative(1) = -1.5_rk*bobvib(istate)%gridvalue(1)+2._rk*bobvib(istate)%gridvalue(2) &
+           !                         -0.5_rk*bobvib(istate)%gridvalue(3)
+           !do igrid =2, ngrid-1
+           !   bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
+           !enddo
+           !bobvib1stderivative(ngrid) = 0.5_rk*bobvib(istate)%gridvalue(ngrid-2)-2._rk*bobvib(istate)%gridvalue(ngrid-1) &
+           !                            +1.5_rk*bobvib(istate)%gridvalue(ngrid)
            ! END OF O(eps**3) FORMULAS
            !
            !
@@ -6557,7 +6557,7 @@ end subroutine map_fields_onto_grid
                                          +(1._rk/2._rk)  *bobvib(istate)%gridvalue(ngrid-3) &
                                          -(3._rk/2._rk)  *bobvib(istate)%gridvalue(ngrid-2) &
                                          +(5._rk/6._rk)  *bobvib(istate)%gridvalue(ngrid-1) &
-                                         +(4._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid)
+                                         +(1._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid)
 
            bobvib1stderivative(ngrid) = (1._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid-4) &
                                        -(4._rk/3._rk)  *bobvib(istate)%gridvalue(ngrid-3) &
