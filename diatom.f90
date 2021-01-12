@@ -2009,7 +2009,8 @@ read_input_loop: do
              ! Check if it was defined before 
              do istate=1,iobject(9)-1
                 if (iref==diabatic(istate)%iref.and.jref==diabatic(istate)%jref) then
-                  call report ("adiabatic, diabatic or nonadiababatic coupling potential is repeated",.true.)
+                 !  write(*,'(A)') "Warning: multiple coupling potentials are defined between states i, j= ", iref, jref
+                 call report ("adiabatic, diabatic or nonadiababatic coupling potential is repeated",.true.)
                 endif
              enddo
              !
