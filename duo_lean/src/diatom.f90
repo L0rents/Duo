@@ -191,7 +191,7 @@ module diatom_module
     real(rk)             :: Omega_min  !  pecs only: minimum physically possible value for |Omega|=|Lambda+Sigma|
     real(rk)             :: approxEJ0    !  pecs only: approximate J=0, v=0 energy (no couplings)
     real(rk)             :: approxEJmin  !  pecs only: approximate J=Jmin, v=0 energy (no couplings)
-
+    logical              :: zIsBobVibDefined =.false.  ! used only if the field is bobvib (non-adiabatic vibrational correction)
 
     procedure (analytical_fieldT),pointer, nopass :: analytical_field => null()
     type(linkT),pointer   :: link(:)       ! address to link with the fitting parameter in a different object in the fit
@@ -247,10 +247,10 @@ module diatom_module
   !
   type gridT
       integer(ik)   :: npoints = 1000       ! grid size
-      real(rk)      :: rmin = 1.0,rmax=3.00 ! range of the grid
-      real(rk)      :: step = 1e-2          ! step size
-      real(rk)      :: alpha = 0.2          ! grid parameter
-      real(rk)      :: re = 1.0             ! grid parameter
+      real(rk)      :: rmin = 1.0_rk,rmax=3.00_rk ! range of the grid
+      real(rk)      :: step = 1e-2_rk       ! step size
+      real(rk)      :: alpha = 0.2_rk       ! grid parameter
+      real(rk)      :: re = 1.0_rk          ! grid parameter
       integer(ik)   :: nsub = 0             ! grid type parameter (0=uniformly spaced)
       real(rk),pointer :: r(:)=>null()      ! the molecular geometry at the grid point
   end type gridT
@@ -405,7 +405,7 @@ module diatom_module
   integer, parameter :: trk        = selected_real_kind(12)
   integer,parameter  :: jlist_max = 500
   type(fieldT),pointer :: poten(:),spinorbit(:),l2(:),lxly(:),abinitio(:),dipoletm(:)=>null(),&
-                          spinspin(:),spinspino(:),bobrot(:),spinrot(:),diabatic(:),lambdaopq(:),lambdap2q(:),lambdaq(:)
+                          spinspin(:),spinspino(:),bobrot(:),spinrot(:),diabatic(:),lambdaopq(:),lambdap2q(:),lambdaq(:), bobvib(:)
   type(fieldT),pointer :: brot(:),quadrupoletm(:)
   type(jobT)   :: job
   type(gridT)  :: grid
@@ -418,7 +418,7 @@ module diatom_module
   !type(symmetryT)             :: sym
   !
   integer(ik)   :: nestates,Nspinorbits,Ndipoles,Nlxly,Nl2,Nabi,Ntotalfields=0,Nss,Nsso,Nbobrot,Nsr,Ndiabatic,&
-                   Nlambdaopq,Nlambdap2q,Nlambdaq,vmax,nQuadrupoles
+                   Nlambdaopq,Nlambdap2q,Nlambdaq,vmax,nQuadrupoles, Nbobvib
   real(rk)      :: m1=-1._rk,m2=-1._rk ! impossible, negative initial values for the atom masses
   real(rk)      :: jmin,jmax,amass,hstep,Nspin1,Nspin2
   real(rk)      :: jmin_global
@@ -444,7 +444,7 @@ module diatom_module
     use  input
     !
     integer(ik)  :: iobject(Nobjects)
-    integer(ik)  :: ipot=0,iso=0,ncouples=0,il2=0,ilxly=0,iabi=0,idip=0,iss=0,isso=0,ibobrot=0,isr=0,idiab=0,iquad=0
+    integer(ik)  :: ipot=0,iso=0,ncouples=0,il2=0,ilxly=0,iabi=0,idip=0,iss=0,isso=0,ibobrot=0,isr=0,idiab=0,iquad=0,ibobvib=0
     integer(ik)  :: Nparam,alloc,iparam,i,j,iobs,i_t,iref,jref,istate,jstate,istate_,jstate_,item_,ibraket,iabi_,iterm,iobj
     integer(ik)  :: Nparam_check    !number of parameters as determined automatically by duo (Nparam is specified in input).
     logical      :: zNparam_defined ! true if Nparam is in the input, false otherwise..
@@ -735,7 +735,7 @@ read_input_loop: do
           !
           allocate(poten(nestates),spinorbit(ncouples),l2(ncouples),lxly(ncouples),spinspin(nestates),spinspino(nestates), &
                    bobrot(nestates),spinrot(nestates),job%vibmax(nestates),job%vibenermax(nestates),diabatic(ncouples),&
-                   lambdaopq(nestates),lambdap2q(nestates),lambdaq(nestates),quadrupoletm(ncouples),stat=alloc)
+                   lambdaopq(nestates),lambdap2q(nestates),lambdaq(nestates),quadrupoletm(ncouples), bobvib(nestates),stat=alloc)
           !
           ! initializing the fields
           !
@@ -1431,8 +1431,9 @@ read_input_loop: do
             "L2","L**2","LXLY","LYLX","ABINITIO",&
             "LPLUS","L+","L_+","LX","DIPOLE","TM","DIPOLE-MOMENT","DIPOLE-X",&
             "SPIN-SPIN","SPIN-SPIN-O", &
-            "BOBROT", "BOB-ROT","ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION", &
-                                                                    "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION", &
+            "BOBROT", "BOB-ROT","NONADIABATIC-ROTATIONAL-G-FUNCTION", "NONADIABATIC-ROTATIONAL-ALPHA-FUNCTION", &
+                                                                    "NONADIABATIC-ROTATIONAL-W-PERPENDICULAR-FUNCTION", &
+            "BOBVIB", &
             "SPIN-ROT", &
             "DIABATIC","DIABAT", "ADIABATIC_CORRECTION", "BODC_CORRECTION", "DBOC_CORRECTION", &
             "NONADIABATIC_POTENTIAL_CORRECTION", &
@@ -1686,8 +1687,8 @@ read_input_loop: do
              if (action%fitting) call report ("L2 cannot appear after FITTING",.true.)
              !
              !
-          case("BOB-ROT","BOBROT","ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION", &
-               "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
+          case("BOB-ROT","BOBROT","NONADIABATIC-ROTATIONAL-G-FUNCTION", "NONADIABATIC-ROTATIONAL-W-PERPENDICULAR-FUNCTION", &
+               "NONADIABATIC-ROTATIONAL-ALPHA-FUNCTION")
              !
              iobject(7) = iobject(7) + 1
              !
@@ -1725,21 +1726,24 @@ read_input_loop: do
              !
              ibobrot = iobject(7)
              !
+             ! Lorenzo Lodi 2 January 2021
+             ! This part is a mess. Here I should convert all possible ways of entering the function to
+             ! the alpha(r) function, which is the primary form used in Duo.
+             ! TODO make it work!
              ! The rotational g factor is the alpha(r) function multiplied by m_e / m_p (electron mass / proton mass)
              ! See, e.g., eq. (4) of S.P.A. Sauer, Chemical Physics Letters 297, 475-483 (1998)
-
-             write(*,*) 'field%factor =' , field%factor
-             if(trim(field_name) == "ROTATIONAL-NONADIABATIC-G-FUNCTION") then
-               field%factor = proton_to_electron_mass_ratio/umatoau
+             ! write(*,*) 'field%factor =' , field%factor
+             if(trim(field_name) == "NONADIABATIC-ROTATIONAL-G-FUNCTION") then
+               field%factor = field%factor*proton_to_electron_mass_ratio/umatoau
                write(*,*) 'proton_to_electron_mass_ratio/umatoau = ', field%factor
 
-             else if(trim(field_name) == "ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION") then
+             else if(trim(field_name) == "NONADIABATIC-ROTATIONAL-W-PERPENDICULAR-FUNCTION") then
                ! the relation is: alpha(r) = 2*W_perp(r)/mu , where mu is the (nuclear) reduced mass
                field%factor = 2.0_rk
                ! I should divide by amass, but this quantity is not yet available at this point in the calculation!
                call check_and_set_atomic_data(0) ! let's call it now
                write(*,*) amass
-               write(*,*) 'ROTATIONAL-NONADIABATIC-W-PERPENDICULAR-FUNCTION NOT YET PROPERLY IMPLEMENTED !!!'
+               write(*,*) 'NONADIABATIC-ROTATIONAL-W-PERPENDICULAR-FUNCTION NOT YET PROPERLY IMPLEMENTED !!!'
              endif
              !
              field => bobrot(ibobrot)
@@ -1750,6 +1754,89 @@ read_input_loop: do
              !
              if (action%fitting) call report (trim(field_name) // " cannot appear after FITTING",.true.)
              !
+
+
+
+
+
+
+
+
+
+
+
+
+          ! Lorenzo Lodi
+          case("BOBVIB")
+          !,"NONADIABATIC-VIBRATIONAL-G-FUNCTION", "NONADIABATIC-VIBRATIONAL-W-PARALLEL-FUNCTION", &
+          !     "NONADIABATIC-VIBRATIONAL-BETA-FUNCTION")
+             !
+             iobject(13) = iobject(13) + 1
+             !
+             call readi(iref) ; jref = iref
+             !
+             ! find the corresponding potential
+             !
+             include_state = .false.
+             loop_istate_bobvib : do istate=1,Nestates
+                 if (iref==poten(istate)%iref) then
+                   include_state = .true.
+                   istate_ = istate
+                   exit loop_istate_bobvib
+                 endif
+             enddo loop_istate_bobvib
+             !
+             ! Check if it was defined before
+             do istate=1,iobject(13)-1
+                if (iref==bobvib(istate)%iref.and.jref==bobvib(istate)%jref) then
+                  call report ("BOBVIB object is repeated",.true.)
+                endif
+             enddo
+             !
+             field_name = trim(w)
+             !
+             if (.not.include_state) then
+                 !write(out,"('The BOBVIB term ',1i8,' is skipped')") iref
+                 iobject(13) = iobject(13) - 1
+                 do while (trim(w)/="".and.trim(w)/="END")
+                   call read_line(eof,iut) ; if (eof) exit
+                   call readu(w)
+                 enddo
+                 cycle
+             endif
+             !
+             ibobvib = iobject(13)
+             !
+             field => bobvib(ibobvib)
+             !
+             call set_field_refs(field,iref,jref,istate_,istate_)
+             !
+             field%class = trim(classnames(13))
+             !
+             if (action%fitting) call report (trim(field_name) // " cannot appear after FITTING",.true.)
+             !
+             field%zIsBobVibDefined = .true.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
           case("SPIN-SPIN")
              !
              iobject(5) = iobject(5) + 1
@@ -1894,7 +1981,7 @@ read_input_loop: do
              !
              if (action%fitting) call report ("Spin-rot cannot appear after FITTING",.true.)
              !
-             ! At the moment diabatic, adiabatic and nonadiabatic couplings are treated the same
+             ! At the moment diabatic, adiabatic and nonadiabatic couplings are treated exactly the same
           case("DIABAT","DIABATIC", "ADIABATIC_CORRECTION", "BODC_CORRECTION", "DBOC_CORRECTION", &
                "NONADIABATIC_POTENTIAL_CORRECTION")
              !
@@ -1922,7 +2009,8 @@ read_input_loop: do
              ! Check if it was defined before 
              do istate=1,iobject(9)-1
                 if (iref==diabatic(istate)%iref.and.jref==diabatic(istate)%jref) then
-                  call report ("adiabatic, diabatic or nonadiababatic coupling potential is repeated",.true.)
+                 !  write(*,'(A)') "Warning: multiple coupling potentials are defined between states i, j= ", iref, jref
+                 call report ("adiabatic, diabatic or nonadiababatic coupling potential is repeated",.true.)
                 endif
              enddo
              !
@@ -2185,7 +2273,7 @@ read_input_loop: do
                    endif
                enddo loop_istate_abl2
 
-             case("BOB-ROT","BOBROT", "ROTATIONAL-NONADIABATIC-G-FUNCTION", "ROTATIONAL-NONADIABATIC-ALPHA-FUNCTION")
+             case("BOB-ROT","BOBROT", "NONADIABATIC-ROTATIONAL-G-FUNCTION", "NONADIABATIC-ROTATIONAL-ALPHA-FUNCTION")
                !
                ! find the corresponding BB
                !
@@ -2203,6 +2291,37 @@ read_input_loop: do
                    endif
                enddo loop_istate_abbobr
                !
+
+
+
+
+             case("BOBVIB")
+               !
+               ! find the corresponding BB
+               !
+               call readi(iref) ; jref = iref
+               !
+               include_state = .false.
+               loop_istate_abbobv : do i=1,Nbobvib
+                   if (iref==bobvib(i)%iref) then
+                     include_state = .true.
+                     !
+                     iabi_ = Nestates + iso + il2 + ilxly + iss+isso+i
+                     !
+                     exit loop_istate_abbobv
+                   endif
+               enddo loop_istate_abbobv
+               !
+
+
+
+
+
+
+
+
+
+
              case("SPIN-ORBIT","SPIN-ORBIT-X")
                !
                call readi(iref)
@@ -3478,6 +3597,7 @@ read_input_loop: do
     Nlambdap2q = iobject(11)
     Nlambdaq = iobject(12)
     nQuadrupoles = iquad
+    Nbobvib  = ibobvib
     !
     ! create a map with field distribution
     !
@@ -3501,7 +3621,7 @@ read_input_loop: do
     fieldmap(Nobjects-1)%Nfields = 1  ! Brot
     fieldmap(Nobjects)%Nfields = Ndipoles
     !
-    Ntotalfields = Nestates+Nspinorbits+NL2+NLxLy+Nss+Nsso+Nbobrot+Nsr+Ndiabatic+iobject(10)
+    Ntotalfields = Nestates+Nspinorbits+NL2+NLxLy+Nss+Nsso+Nbobrot+Nsr+Ndiabatic+iobject(10)+Nbobvib
     !
     Ntotalfields = sum(iobject(1:Nobjects-4))
     !
@@ -3548,6 +3668,8 @@ read_input_loop: do
             field => lambdap2q(iterm)
           case (12)
             field => lambdaq(iterm)
+          case (13)
+            field => bobvib(iterm)
           case (Nobjects-3)
             field => quadrupoletm(iterm)
           case (Nobjects-2)
@@ -4197,6 +4319,8 @@ subroutine map_fields_onto_grid(iverbose)
             field => lambdap2q(iterm)
           case (12)
             field => lambdaq(iterm)
+          case (13)
+            field => bobvib(iterm)
           case (Nobjects-3)
             field => quadrupoletm(iterm)
           case (Nobjects-2)
@@ -4553,6 +4677,8 @@ subroutine map_fields_onto_grid(iverbose)
             field => lambdap2q(iterm)
           case (12)
             field => lambdaq(iterm)
+          case (13)
+            field => bobvib(iterm)
           case (Nobjects-3)
             field => quadrupoletm(iterm)
           case (Nobjects-2)
@@ -4616,7 +4742,7 @@ subroutine map_fields_onto_grid(iverbose)
           endif  
           !
           !
-          ! transform from the MOLRPO to Duo representation
+          ! transform from the MOLPRO to Duo representation
           !
           if (field%molpro) then
             !
@@ -4814,6 +4940,7 @@ subroutine map_fields_onto_grid(iverbose)
      call check_and_print_coupling(Nlambdaopq, iverbose,lambdaopq,"Lambda-opq:")
      call check_and_print_coupling(Nlambdap2q, iverbose,lambdap2q,"Lambda-p2q:")
      call check_and_print_coupling(Nlambdaq,   iverbose,lambdaq,  "Lambda-q:")
+     call check_and_print_coupling(Nbobvib,    iverbose,bobvib,  "Vibrational non-adiabatic (BOB) beta(r) functions:")
      if(associated(dipoletm)) call check_and_print_coupling(Ndipoles,   iverbose,dipoletm, "Dipole moment functions:")
      if(associated(quadrupoletm)) call check_and_print_coupling(nQuadrupoles,iverbose,quadrupoletm, "Quadrupole moment functions:")
      !
@@ -6260,6 +6387,7 @@ end subroutine map_fields_onto_grid
      !real(rk)                  :: f_rk
      character(len=cl)          :: filename,ioname
      integer(ik)                :: iunit,vibunit,imaxcontr,i0,imaxcontr_,mterm_
+     real(rk), allocatable       :: bobvib1stderivative(:)
      
      ! open file for later (if option is set)
      if (job%print_rovibronic_energies_to_file ) &
@@ -6302,6 +6430,7 @@ end subroutine map_fields_onto_grid
      !
      h12 = 12.0_rk*hstep**2
      sc  = h12*scale
+
      !
      b_rot = aston/amass
      !
@@ -6361,7 +6490,13 @@ end subroutine map_fields_onto_grid
        call derLobattoMat(LobDerivs,ngrid-2,LobAbs,LobWeights)  ! SY a bug
      endif
      !
-     do istate = 1,Nestates
+
+     ! allocated an array that will contain the the 1st derivative of
+     ! the vibrational non-adiabatic beta(r) function for state istate
+     ! It is necessary for the non-adiabatic correction
+     allocate( bobvib1stderivative(ngrid) )
+
+     loop_over_states: do istate = 1,Nestates
        !
        vibmat = 0
        !
@@ -6375,6 +6510,65 @@ end subroutine map_fields_onto_grid
        !
        if (iverbose>=4) call TimerStart('Build vibrational Hamiltonian')
        !
+       if( bobvib(istate)%zIsBobVibDefined) then
+           if( ngrid < 5) then
+                            write(out, '(A)') 'Warning: because the number of points is less than 5, ' &
+                                     // ' the vibrational non-adiabatic correction will be neglected!'
+                            bobvib1stderivative = 0._rk
+           else
+
+           ! numerically pre-compute 1st derivative of the vibrational non-adiabatic beta(r) function
+           !  times DeltaX (i.e. step)
+           !
+           ! START OF O(eps**3) FORMULAS
+           ! The following formulas uses a three-value asymmetric expression ( error in the derivative = [beta'''(x*)/3]*eps**3 )
+           !  for the first and last point, and two-point symmetric expression for the intermediate points
+           ! ( error in the derivative = [beta'''(x*)/6]*eps**3  )
+           !bobvib1stderivative(1) = -1.5_rk*bobvib(istate)%gridvalue(1)+2._rk*bobvib(istate)%gridvalue(2) &
+           !                         -0.5_rk*bobvib(istate)%gridvalue(3)
+           !do igrid =2, ngrid-1
+           !   bobvib1stderivative(igrid) = 0.5_rk*(bobvib(istate)%gridvalue(igrid+1)-bobvib(istate)%gridvalue(igrid-1))
+           !enddo
+           !bobvib1stderivative(ngrid) = 0.5_rk*bobvib(istate)%gridvalue(ngrid-2)-2._rk*bobvib(istate)%gridvalue(ngrid-1) &
+           !                            +1.5_rk*bobvib(istate)%gridvalue(ngrid)
+           ! END OF O(eps**3) FORMULAS
+           !
+           !
+           ! START OF O(eps**5) FORMULAS
+           ! The following formulas uses a five-value asymmetric expression ( error in the derivative = [beta'''''(x*)/5]*eps**5 )
+           !  for the first and last point, a different five-value asymmetric expression for the second and penultimate points
+           ! ( error in the derivative = [beta'''''(x*)/20]*eps**5  )
+           ! and four-point symmetric expression for the intermediate points ( error in the derivative = [beta'''''(x*)/30]*eps**5  )
+           bobvib1stderivative(1) = -(25._rk/12._rk)*bobvib(istate)%gridvalue(1) + 4._rk*bobvib(istate)%gridvalue(2) &
+                                    - 3._rk*bobvib(istate)%gridvalue(3) + (4._rk/3._rk)*bobvib(istate)%gridvalue(4)  &
+                                    - (1._rk/4._rk)*bobvib(istate)%gridvalue(5)
+           bobvib1stderivative(2) = -(1._rk/4._rk)*bobvib(istate)%gridvalue(1) -(5._rk/6._rk)*bobvib(istate)%gridvalue(2) &
+                                    +(3._rk/2._rk)*bobvib(istate)%gridvalue(3) - (1._rk/2._rk)*bobvib(istate)%gridvalue(4)  &
+                                    +(1._rk/12._rk)*bobvib(istate)%gridvalue(5)
+
+           do igrid =3, ngrid-2
+              bobvib1stderivative(igrid) = (1._rk/12.0_rk)*bobvib(istate)%gridvalue(igrid-2) &
+                                          -(2._rk/3.0_rk) *bobvib(istate)%gridvalue(igrid-1) &
+                                          +(2._rk/3.0_rk) *bobvib(istate)%gridvalue(igrid+1) &
+                                          -(1._rk/12.0_rk)*bobvib(istate)%gridvalue(igrid+2)
+           enddo
+
+           bobvib1stderivative(ngrid-1) =-(1._rk/12._rk) *bobvib(istate)%gridvalue(ngrid-4) &
+                                         +(1._rk/2._rk)  *bobvib(istate)%gridvalue(ngrid-3) &
+                                         -(3._rk/2._rk)  *bobvib(istate)%gridvalue(ngrid-2) &
+                                         +(5._rk/6._rk)  *bobvib(istate)%gridvalue(ngrid-1) &
+                                         +(1._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid)
+
+           bobvib1stderivative(ngrid) = (1._rk/4._rk)  *bobvib(istate)%gridvalue(ngrid-4) &
+                                       -(4._rk/3._rk)  *bobvib(istate)%gridvalue(ngrid-3) &
+                                       +3._rk          *bobvib(istate)%gridvalue(ngrid-2) &
+                                       -4._rk          *bobvib(istate)%gridvalue(ngrid-1) &
+                                       +(25._rk/12._rk)*bobvib(istate)%gridvalue(ngrid)
+           ! END OF O(eps**5) FORMULAS
+           !
+           endif
+       endif
+
        !$omp parallel do private(igrid,f_rot,epot,f_l2,iL2,erot) shared(vibmat) schedule(guided)
        do igrid =1, ngrid
          !
@@ -6438,12 +6632,38 @@ end subroutine map_fields_onto_grid
                 write(out, '(A)') 'Use 5PointDifferences as solution method for non uniformely-spaced grids.'
                 stop
               endif
+
               vibmat(igrid,igrid) = vibmat(igrid,igrid) +(12._rk)* pi**2 / 3._rk
+
+
               !
+              ! Add vibrational non-adiabatic BOBVIB
+
+              if( bobvib(istate)%zIsBobVibDefined ) then
+                 ! add the part L Lodi calls 'W' matrix
+                 vibmat(igrid,igrid) = vibmat(igrid,igrid) + (12._rk)* (pi**2 / 3._rk) * bobvib(istate)%gridvalue(igrid)
+                 ! add the part L Lodi calls 'X' matrix
+                 vibmat(igrid,igrid) = vibmat(igrid,igrid) + (12._rk)* (  (hstep/grid%r(igrid)) * &
+                                                                           bobvib1stderivative(igrid) )
+              endif
+
               do jgrid =igrid+1, ngrid
                 vibmat(igrid,jgrid) = +(12._rk)*2._rk* real( (-1)**(igrid+jgrid), rk) / real(igrid - jgrid, rk)**2
+
+                ! Added by L Lodi, 11 January 2021
+                ! Use symmetrised approximation (to build a symmetric matrix)
+                if( bobvib(istate)%zIsBobVibDefined ) then
+                 ! add the part L Lodi calls 'W' matrix
+                vibmat(igrid,jgrid) = vibmat(igrid,jgrid) *(1._rk + 0.5_rk*(bobvib(istate)%gridvalue(igrid) + &
+                                                                            bobvib(istate)%gridvalue(jgrid)))
+                 ! add the part L Lodi calls 'X' matrix
+                 vibmat(igrid,jgrid) = vibmat(igrid,jgrid) -(12._rk)*(real((-1)**(igrid-jgrid), rk)/real(igrid - jgrid, rk)) &
+                                        * 0.5_rk*( bobvib1stderivative(igrid)-bobvib1stderivative(jgrid) )
+
+                endif
                 vibmat(jgrid,igrid) = vibmat(igrid,jgrid)
               enddo
+
               !
             case("LOBATTO") ! Implements a DVR method based on Lobatto quadrature
                             ! Requires the Lobatto nonuniform grid to work
@@ -6475,6 +6695,17 @@ end subroutine map_fields_onto_grid
             !
        enddo
        !$omp end parallel do
+
+
+              ! L Lodi ; this will print out the hamiltonian (for tests)
+              !do igrid=1, ngrid
+              !do jgrid=1, ngrid
+              !   write(*,'(f11.6)', advance='no') vibmat(igrid,jgrid)
+              !enddo
+              !   write(*,*)
+              !enddo
+
+
        !
        if (iverbose>=4) call TimerStop('Build vibrational Hamiltonian')
        !
@@ -6577,7 +6808,9 @@ end subroutine map_fields_onto_grid
        !
        totalroots = totalroots + nroots
        !
-     enddo
+     enddo loop_over_states
+     deallocate( bobvib1stderivative )
+
      !
      ! sorting basis states (energies, basis functions and quantum numbers) from different
      ! states all together according with their energies

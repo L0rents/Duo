@@ -26,6 +26,7 @@ FFLAGS_LAPACK =  -O0 -Wno-argument-mismatch
 ###############################################################################
 
 OBJ = atomic_and_nuclear_data.o grids.o accuracy.o lapack.o timer.o input.o diatom.o refinement.o functions.o  symmetry.o dipole.o header_info.o Lobatto.o lapack_for_duo.o quadrupole.o
+#compilation_details.o 
 
 duo.x:	$(OBJ) duo.o
 	$(FOR) -o duo$(PLAT).x $(OBJ) $(FFLAGS) duo.o $(LIB)
@@ -62,6 +63,9 @@ timer.o:  timer.f90
 
 input.o:  input.f90
 	$(FOR) -c input.f90 $(FFLAGS)
+
+#compilation_details.o: compilation_details.f90
+#	$(FOR) -c compilation_details.f90 $(FFLAGS)
 
 header_info.o:  accuracy.o
 	$(FOR) -c header_info.f90 $(FFLAGS)
